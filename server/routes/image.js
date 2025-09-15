@@ -6,153 +6,78 @@ import { saveStoryToDB } from "../config/db1.js";
 const imageRouter = express.Router();
 
 imageRouter.post("/genimg", async (req, res) => {
-  console.log("📥 Received /genimg request");
+  console.log("📥 Received streaming /genimg request");
+
+  // 1. Set Headers for Server-Sent Events (SSE)
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders(); // Send headers to the client immediately
 
   const { userId, storyId, genre, tone, audience, story } = req.body;
-  console.log("🔍 Extracted payload:", {
-    userId,
-    storyId,
-    genre,
-    tone,
-    audience,
-    title: story?.title,
-  });
 
-  // ✅ Validate required fields
+  // 2. Perform Validations (now sending SSE errors)
   const requiredFields = [userId, storyId, genre, tone, audience, story?.title];
-  const hasMissingValues = requiredFields.some(
-    (field) => typeof field !== "string" || !field.trim()
-  );
-
-  if (hasMissingValues || typeof story !== "object") {
-    console.warn("⚠️ Missing or invalid fields");
-    return res.status(400).json({
-      error: "One or more required fields are missing or invalid.",
-    });
+  if (requiredFields.some((f) => !f || typeof f !== "string") || !story) {
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "Missing or invalid fields." })}\n\n`);
+    return res.end();
   }
-
-  // ✅ Validate scenes
-  const sceneKeys = Object.keys(story).filter((key) => key.startsWith("scene"));
-  console.log("🧩 Found scene keys:", sceneKeys);
-
+  
+  const sceneKeys = Object.keys(story).filter((key) => key.startsWith("scene")).sort();
   if (sceneKeys.length === 0) {
-    console.warn("⚠️ No scenes found in story");
-    return res.status(400).json({ error: "No scenes found in story." });
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "No scenes found in story." })}\n\n`);
+    return res.end();
   }
 
-  for (const key of sceneKeys) {
-    const text = story[key];
-    if (!text || typeof text !== "string" || text.trim().length < 10) {
-      console.warn(`⚠️ Scene "${key}" is too short or missing`);
-      return res.status(400).json({
-        error: `Scene "${key}" is too short or missing.`,
-      });
-    }
-  }
-
-  // 🧪 Moderation check
-  const combinedText = Object.values(story)
-    .filter((v) => typeof v === "string")
-    .join(" ");
-  console.log(
-    "🧪 Combined story text for moderation:",
-    combinedText.slice(0, 200) + "..."
-  );
-
+  const combinedText = Object.values(story).filter((v) => typeof v === "string").join(" ");
   if (!isCleanPrompt(combinedText)) {
-    console.warn("🚫 Moderation failed");
-    return res.status(400).json({
-      error: "Story contains harmful or inappropriate content.",
-    });
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "Story contains harmful content." })}\n\n`);
+    return res.end();
   }
 
-  console.log("✅ Moderation passed");
+  console.log("✅ Validation passed, starting stream...");
 
-  const response = {
-    title: story.title,
-    cover: null,
-  };
-
-  // 🎨 Generate and save cover image
+  // 3. Generate and Stream Cover Image
   try {
-    const coverPrompt = `
-      Create a cinematic cover illustration of size 512x512 for a ${genre} story.
-      Tone: ${tone}. Audience: ${audience}.
-      Title: ${story.title}
-      Summary: ${combinedText.slice(0, 300)}...
-    `.trim();
-
+    const coverPrompt = `Create a cinematic cover illustration for a ${genre} story titled "${story.title}". Tone: ${tone}. Summary: ${combinedText.slice(0, 300)}...`;
+    
     console.log("🎨 Generating cover image...");
-    const coverImage = await generateImage(coverPrompt, {
-      userId,
-      storyId,
-      sceneKey: "cover",
-    });
+    const coverImage = await generateImage(coverPrompt, { userId, storyId, sceneKey: "cover" });
     console.log("✅ Cover image generated");
+    
+    await saveStoryToDB(userId, storyId, { title: story.title }, { cover: coverImage }, genre, tone, audience);
 
-    await saveStoryToDB(
-      userId,
-      storyId,
-      { title: story.title },
-      { cover: coverImage },
-      genre,
-      tone,
-      audience
-    );
-    console.log("💾 Meta entry saved");
-
-    response.cover = { image: coverImage };
+    // Immediately write the cover data to the stream
+    res.write(`event: cover\ndata: ${JSON.stringify({ title: story.title, image: coverImage })}\n\n`);
   } catch (err) {
-    console.error("❌ Failed to generate or save cover image:", err);
-    return res
-      .status(500)
-      .json({ error: "Failed to generate or save cover image." });
+    console.error("❌ Failed to generate cover image:", err.message);
+    res.write(`event: error\ndata: ${JSON.stringify({ key: "cover", error: err.message })}\n\n`);
   }
 
-  // 🎨 Generate and save each scene image one-by-one
+  // 4. Generate and Stream Scene Images Sequentially
   for (const sceneKey of sceneKeys) {
     const sceneText = story[sceneKey];
     try {
-      const scenePrompt = `
-        Create an illustration for the following scene in a ${genre} story.
-        Tone: ${tone}. Audience: ${audience}.
-        Scene: ${sceneText}
-      `.trim();
-
+      const scenePrompt = `Create an illustration for a scene in a ${genre} story. Tone: ${tone}. Scene: ${sceneText}`;
+      
       console.log(`🎨 Generating image for ${sceneKey}...`);
-      const sceneImage = await generateImage(scenePrompt, {
-        userId,
-        storyId,
-        sceneKey,
-      });
+      const sceneImage = await generateImage(scenePrompt, { userId, storyId, sceneKey });
       console.log(`✅ Image generated for ${sceneKey}`);
 
-      await saveStoryToDB(
-        userId,
-        storyId,
-        { [sceneKey]: sceneText },
-        { [sceneKey]: sceneImage },
-        genre,
-        tone,
-        audience
-      );
-      console.log(`💾 Scene ${sceneKey} saved`);
+      await saveStoryToDB(userId, storyId, { [sceneKey]: sceneText }, { [sceneKey]: sceneImage }, genre, tone, audience);
 
-      response[sceneKey] = {
-        text: sceneText,
-        image: sceneImage,
-      };
+      // Immediately write the scene data to the stream
+      res.write(`event: scene\ndata: ${JSON.stringify({ key: sceneKey, text: sceneText, image: sceneImage })}\n\n`);
     } catch (err) {
-      console.error(`❌ Failed to generate or save ${sceneKey}:`, err);
-      response[sceneKey] = {
-        text: sceneText,
-        error: "Failed to generate or save image.",
-      };
+      console.error(`❌ Failed to generate image for ${sceneKey}:`, err.message);
+      res.write(`event: error\ndata: ${JSON.stringify({ key: sceneKey, error: err.message })}\n\n`);
     }
   }
 
-  console.log("🚀 Sending final response");
-  res.json(response);
+  // 5. Signal the End of the Stream and Close the Connection
+  console.log("🚀 All processing finished, sending done event.");
+  res.write(`event: done\ndata: ${JSON.stringify({ message: "All scenes processed." })}\n\n`);
+  res.end();
 });
 
 export default imageRouter;

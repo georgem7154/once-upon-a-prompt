@@ -13,5 +13,6 @@ export const {
   ALPACA,
   JWT_SECRET,
   expiresIn,
-  NODE_ENV
+  NODE_ENV,
+  HF_TOKEN,
 } = process.env;

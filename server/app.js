@@ -29,6 +29,7 @@ import publicStoryRouter from "./routes/publicstory.js";
 
 // Middleware
 import errorHandlerMiddleware from "./middleware/errorhandlermiddleware.js";
+import hugRouter from "./routes/hugging.js";
 
 // Initialize app
 const app = express();
@@ -53,6 +54,8 @@ app.use("/api", exportRouter);
 app.use("/api", publishrouter);
 app.use("/api", getpublicrouter);
 app.use("/api", publicStoryRouter);
+app.use("/api", hugRouter);
+
 
 // Serve frontend
 app.use(express.static(path.join(__dirname, "client", "dist")));
