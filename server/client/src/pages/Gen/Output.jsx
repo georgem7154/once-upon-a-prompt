@@ -181,7 +181,7 @@ const Output = () => {
   );
   
   return (
-    <main className="relative min-h-screen text-white pt-20 bg-slate-900 overflow-x-hidden">
+    <main className="relative min-h-screen text-white pt-20 bg-black overflow-x-hidden">
       <div className="absolute inset-0 z-0 h-full w-full">
         <Canvas camera={{ position: [0, 0, 5] }}>
           <fog attach="fog" args={["#0f172a", 15, 70]} />

@@ -1,62 +1,10 @@
-import { useState, useRef, useEffect, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Points, PointMaterial } from "@react-three/drei";
-import { easing } from "maath";
-import * as THREE from "three";
+import { useState, useEffect } from "react";
+// Import the new Particles component
+import Particles from './Particles';
 
-// 🌌 Sparkles Background
-function MovingSparkles() {
-  const ref = useRef();
-  const count = 2500;
-  const positions = useMemo(() => {
-    const temp = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const x = (Math.random() - 0.5) * 100;
-      const y = (Math.random() - 0.5) * 100;
-      const z = (Math.random() - 0.5) * 100;
-      temp.set([x, y, z], i * 3);
-    }
-    return temp;
-  }, [count]);
-
-  useFrame((state, delta) => {
-    // Intrinsic rotation
-    ref.current.rotation.x += delta * 0.02;
-    ref.current.rotation.y += delta * 0.03;
-
-    // Mouse interactivity with easing for a smooth effect
-    easing.damp3(
-      ref.current.rotation,
-      [
-        ref.current.rotation.x + state.mouse.y * 0.05,
-        ref.current.rotation.y + state.mouse.x * 0.05,
-        0,
-      ],
-      0.25,
-      delta
-    );
-  });
-
+const StoryLoadingAnimation = ({ key }) => {
   return (
-    <group ref={ref}>
-      <Points positions={positions} stride={3}>
-        <PointMaterial
-          transparent
-          color="green"
-          size={0.2}
-          sizeAttenuation={true}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </Points>
-    </group>
-  );
-}
-
-// Loading Component with animation
-const StoryLoadingAnimation = () => {
-  return (
-    <div className="fixed inset-0 bg-slate-900 bg-opacity-90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+    <div key={key} className="fixed inset-0 bg-slate-900 bg-opacity-90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
       <div className="relative">
         {/* Main spinner */}
         <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
@@ -170,21 +118,79 @@ const PublicStories = ({ authChecker, setAuthChecker, setGlobalLoading }) => {
     setActiveStory(null);
   };
 
+  const wrapText = (text, font, fontSize, maxWidth) => {
+    const words = text.split(" ");
+    const lines = [];
+    let currentLine = "";
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const width = font.widthOfTextAtSize(testLine, fontSize);
+      if (width < maxWidth) {
+        currentLine = testLine;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  };
+
+  const handleStructuredPDFExport = async () => {
+    if (!activeStory || !activeStory.scenes) return;
+
+    // The user's original code for PDF creation is not provided here.
+    // This section would require a library like 'pdf-lib' or similar.
+    // The provided code snippet only contains front-end logic.
+    // The following is a placeholder or an assumption of how it would look.
+    console.log("PDF Export functionality placeholder");
+  };
+
+  const handleMakePublic = async () => {
+    if (!activeStory || !userId) return;
+
+    try {
+      const res = await fetch(
+        `/api/publishstory/${userId}/${activeStory.storyId}`,
+        {
+          method: "POST",
+        }
+      );
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ Story published to PublicStories!");
+      } else {
+        console.error("❌ Failed to publish:", data.error || res.statusText);
+      }
+    } catch (err) {
+      console.error("❌ Error publishing story:", err);
+    }
+  };
+
   return (
-    <div className="relative min-h-screen text-white bg-slate-900 overflow-hidden pt-20">
-      {/* 🌌 Starfield Background */}
+    <div className="relative min-h-screen text-white bg-black overflow-hidden pt-20">
+      {/* Particles Background Integration */}
       <div className="absolute inset-0 z-0 h-full w-full">
-        <Canvas style={{ height: "100%", width: "100%" }}>
-          <fog attach="fog" args={["#0f172a", 0, 70]} />
-          <MovingSparkles />
-        </Canvas>
+        <Particles
+          particleColors={['#ffffff', '#ffffff']}
+          particleCount={500}
+          particleSpread={5}
+          speed={0.1}
+          particleBaseSize={100}
+          moveParticlesOnHover={true}
+          alphaParticles={false}
+          disableRotation={false}
+        />
       </div>
 
       {/* Show loading animation when initial stories are loading */}
-      {loading && <StoryLoadingAnimation />}
+      {loading && <StoryLoadingAnimation key="initial-loading" />}
 
       {/* Show loading animation when a specific story is being fetched */}
-      {storyLoading && <StoryLoadingAnimation />}
+      {storyLoading && <StoryLoadingAnimation key="story-loading" />}
 
       <div className="relative z-10 p-6">
         {!loading && !activeStory && !storyLoading && (

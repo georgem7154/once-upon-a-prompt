@@ -2,61 +2,8 @@ import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Points, PointMaterial } from "@react-three/drei";
-import { easing } from "maath";
-import * as THREE from "three";
-
-
-
-// 🌌 Sparkles Background
-function MovingSparkles() {
-  const ref = useRef();
-  const count = 2500;
-  const positions = useMemo(() => {
-    const temp = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const x = (Math.random() - 0.5) * 100;
-      const y = (Math.random() - 0.5) * 100;
-      const z = (Math.random() - 0.5) * 100;
-      temp.set([x, y, z], i * 3);
-    }
-    return temp;
-  }, [count]);
-
-  useFrame((state, delta) => {
-    // Intrinsic rotation
-    ref.current.rotation.x += delta * 0.02;
-    ref.current.rotation.y += delta * 0.03;
-
-    // Mouse interactivity with easing for a smooth effect
-    easing.damp3(
-      ref.current.rotation,
-      [
-        ref.current.rotation.x + state.mouse.y * 0.05,
-        ref.current.rotation.y + state.mouse.x * 0.05,
-        0
-      ],
-      0.25,
-      delta
-    );
-  });
-
-  return (
-    <group ref={ref}>
-      <Points positions={positions} stride={3}>
-        <PointMaterial
-          transparent
-          color="green"
-          size={0.2}
-          sizeAttenuation={true}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </Points>
-    </group>
-  );
-}
+// Import the new Particles component
+import Particles from '../Home/Particles';
 
 const Login = ({ authChecker, setAuthChecker }) => {
   const prevPage = localStorage.getItem("prevPage");
@@ -74,10 +21,10 @@ const Login = ({ authChecker, setAuthChecker }) => {
   };
 
   useEffect(() => {
-    if(error){
-        setTimeout(() => {
-          setError("");
-        }, 5000);
+    if (error) {
+      setTimeout(() => {
+        setError("");
+      }, 5000);
     }
   }, [error]);
 
@@ -89,13 +36,12 @@ const Login = ({ authChecker, setAuthChecker }) => {
         { email: formData.email, password: formData.password },
         { withCredentials: true }
       );
-      
-      // Using navigate for smoother transitions within React Router
+
       setAuthChecker(true);
-      toast.success("Successfully logged in");  
+      toast.success("Successfully logged in");
       if (prevPage === "/register") {
         navigate("/");
-        localStorage.removeItem("prevPage"); // Clear after redirect
+        localStorage.removeItem("prevPage");
       } else {
         navigate("/");
       }
@@ -107,49 +53,55 @@ const Login = ({ authChecker, setAuthChecker }) => {
   };
 
   return (
-    <div className="bg-slate-900 w-screen h-screen overflow-hidden relative">
-      {/* Starfield Background */}
+    <div className="max-sm:py-24 w-screen h-screen overflow-hidden relative">
+      {/* Particles Background Integration */}
       <div className="absolute inset-0 z-0 h-full w-full">
-              <Canvas style={{ height: "100%", width: "100%" }}>
-                          <fog attach="fog" args={['#0f172a', 0, 70]} />
-                          <MovingSparkles />
-                        </Canvas>
+        <Particles
+          particleColors={['#ffffff', '#ffffff']}
+          particleCount={500}
+          particleSpread={5}
+          speed={0.1}
+          particleBaseSize={100}
+          moveParticlesOnHover={true}
+          alphaParticles={false}
+          disableRotation={false}
+        />
       </div>
 
       {/* Main Content */}
       <div className="relative z-10 w-screen h-screen flex text-slate-400 justify-center items-center">
-        <div className="border-2 border-yellow-400/50 shadow-2xl shadow-yellow-400/30 flex flex-col m-1 bg-slate-900/80 backdrop-blur-md rounded-2xl p-10">
-          <form className="flex flex-col" onSubmit={handleSubmit}>
+        <div className="flex flex-col m-1 rounded-2xl p-10 pointer-events-none">
+          <form className="flex flex-col pointer-events-auto" onSubmit={handleSubmit}>
             <div className="text-center mb-5 text-4xl font-press text-yellow-300 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]">
               Login
             </div>
-            <div className="text-base text-center mb-6">
+            <div className="text-base text-center mb-6 pointer-events-auto">
               Don't have an account?{" "}
               <Link to="/register" className="hover:text-yellow-300 transition-colors text-white font-semibold">
                 Register Here
               </Link>
             </div>
-            <label className="text-lg">Email</label>
+            <label className="text-lg pointer-events-auto">Email</label>
             <input
               type="email"
               name="email"
-              className="mt-2 mb-6 rounded-xl text-xl p-2 text-white bg-slate-800/80 ring-1 ring-slate-600 focus:ring-yellow-400 focus:outline-none"
+              className="mt-2 mb-6 rounded-xl text-xl p-2 text-white bg-slate-800/80 ring-1 ring-slate-600 focus:ring-yellow-400 focus:outline-none pointer-events-auto"
               required
               onChange={handleChange}
             />
-            <label className="text-lg">Password</label>
-            <div className="flex flex-row items-center">
+            <label className="text-lg pointer-events-auto">Password</label>
+            <div className="flex flex-row items-center pointer-events-auto">
               <input
                 type={showpwd ? "text" : "password"}
                 name="password"
-                className="mt-2 mb-4 rounded-xl text-xl p-2 w-full text-white bg-slate-800/80 ring-1 ring-slate-600 focus:ring-yellow-400 focus:outline-none"
+                className="mt-2 mb-4 rounded-xl text-xl p-2 w-full text-white bg-slate-800/80 ring-1 ring-slate-600 focus:ring-yellow-400 focus:outline-none pointer-events-auto"
                 required
                 onChange={handleChange}
               />
               <button
                 type="button"
                 onClick={() => setShowPwd(!showpwd)}
-                className="ml-3 flex hover:text-white text-slate-600 transition-colors"
+                className="ml-3 flex hover:text-white text-slate-600 transition-colors pointer-events-auto"
               >
                 <svg
                   width="30px"
@@ -165,13 +117,13 @@ const Login = ({ authChecker, setAuthChecker }) => {
                 </svg>
               </button>
             </div>
-            {error && <div className="text-red-500 text-base text-center h-6">{error}</div>}
+            {error && <div className="text-red-500 text-base text-center h-6 pointer-events-auto">{error}</div>}
             <button
               onMouseEnter={() => setIsHovered1(true)}
               onMouseLeave={() => setIsHovered1(false)}
               className={`p-2 mt-4 rounded-full mx-5 text-lg font-bold ${
                 isHovered1 ? "bg-green-700" : "bg-green-600"
-              } text-white transition-colors`}
+              } text-white transition-colors pointer-events-auto`}
               type="submit"
             >
               Login

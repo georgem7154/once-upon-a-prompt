@@ -52,7 +52,7 @@ function MovingSparkles() {
 
 // 🌀 Loading Animation
 const StoryLoadingAnimation = () => (
-  <div className="fixed inset-0 bg-slate-900 bg-opacity-90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+  <div className="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
     <div className="relative">
       <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
       <div className="absolute -top-2 -left-2 w-6 h-6 bg-purple-500 rounded-full animate-ping opacity-75"></div>
@@ -71,7 +71,7 @@ const Textedit = ({ setGlobalLoading }) => {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
   const sceneRefs = useRef({});
-  const [useGemini, setUseGemini] = useState(true); // Default to Gemini
+  const [useGemini, setUseGemini] = useState(false); // Default to Gemini
 
   useEffect(() => {
     setGlobalLoading(true);
@@ -139,7 +139,7 @@ const Textedit = ({ setGlobalLoading }) => {
   if (loading) return <StoryLoadingAnimation />;
 
   return (
-    <div className="relative min-h-screen text-white bg-slate-900 overflow-hidden">
+    <div className="relative min-h-screen text-white bg-black overflow-hidden">
       <div className="absolute inset-0 z-0 h-full w-full">
         <Canvas style={{ height: "100%", width: "100%" }}>
           <fog attach="fog" args={["#0f172a", 0, 70]} />

@@ -22,6 +22,7 @@
     "axios": "^1.9.0",
     "cross-env": "^7.0.3",
     "html2pdf.js": "^0.12.0",
+    "ogl": "^1.0.11",
     "patch-package": "^8.0.0",
     "pdf-lib": "^1.17.1",
     "postcss": "^8.5.3",

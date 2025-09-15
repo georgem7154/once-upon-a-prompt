@@ -18,10 +18,10 @@ function sanitizePrompt(text) {
 }
 
 /**
- * Generates a high-quality image using a two-step generate-and-refine process.
+ * Generates a high-quality image.
  * @param {string} prompt - The text prompt for the image.
  * @param {number} seed - The seed for consistent image generation.
- * @returns {Promise<string>} A promise that resolves to the final, refined, base64 encoded image.
+ * @returns {Promise<string>} A promise that resolves to the base64 encoded image.
  */
 async function generateImage(prompt, seed) {
   if (!gradioClient) {
@@ -31,9 +31,9 @@ async function generateImage(prompt, seed) {
   }
 
   try {
-    // --- Step 1: Generate the Base Image ---
-    console.log(`🎨 Generating base image for prompt: "${prompt.slice(0, 50)}..."`);
-    const baseResult = await gradioClient.predict("/generate_image", {
+    // --- Generate the Image ---
+    console.log(`🎨 Generating image for prompt: "${prompt.slice(0, 50)}..."`);
+    const result = await gradioClient.predict("/generate_image", {
       prompt: prompt,
       negative_prompt: "ugly, deformed, noisy, blurry, low contrast, text, signature, watermark, username, logo, worst quality, low quality, bad anatomy, bad hands, extra fingers",
       width: 1024,
@@ -45,50 +45,23 @@ async function generateImage(prompt, seed) {
       use_refiner: false,
     });
 
-    const baseImageUrl = baseResult.data?.[0]?.url;
-    if (!baseImageUrl || typeof baseImageUrl !== 'string') {
-      console.error("API did not return a valid base image URL:", util.inspect(baseResult, { depth: null }));
+    const imageUrl = result.data?.[0]?.url;
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      console.error("API did not return a valid base image URL:", util.inspect(result, { depth: null }));
       throw new Error("API did not return a valid base image URL.");
     }
     
-    console.log("📥 Fetching base image...");
-    const baseImageResponse = await fetch(baseImageUrl);
-    if (!baseImageResponse.ok) throw new Error(`Failed to fetch base image: ${baseImageResponse.statusText}`);
+    // --- Fetch the Image ---
+    console.log("📥 Fetching generated image...");
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
     
-    // BUG FIX: Use .arrayBuffer() and Buffer.from() for modern node-fetch
-    const baseImageArrayBuffer = await baseImageResponse.arrayBuffer();
-    const baseImageBuffer = Buffer.from(baseImageArrayBuffer);
-    console.log("👍 Base image fetched successfully.");
-
-    // --- Step 2: Refine the Base Image ---
-    console.log("✨ Refining the generated image...");
-    const refineResult = await gradioClient.predict("/refine_image", {
-        image: baseImageBuffer,
-        prompt: prompt,
-        width: 1024,
-        height: 1024,
-        num_inference_steps: 10,
-        guidance_scale: 3.0,
-        seed: seed,
-    });
-
-    const refinedImageUrl = refineResult.data?.[0]?.url;
-    if (!refinedImageUrl || typeof refinedImageUrl !== 'string') {
-        console.error("API did not return a valid refined image URL:", util.inspect(refineResult, { depth: null }));
-        throw new Error("API did not return a valid refined image URL.");
-    }
-
-    // --- Step 3: Fetch the Final, Refined Image ---
-    console.log("📥 Fetching final refined image...");
-    const finalImageResponse = await fetch(refinedImageUrl);
-    if (!finalImageResponse.ok) throw new Error(`Failed to fetch final image: ${finalImageResponse.statusText}`);
-    
-    const finalArrayBuffer = await finalImageResponse.arrayBuffer();
-    console.log("👍 Final image fetched successfully.");
-    return Buffer.from(finalArrayBuffer).toString("base64");
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    console.log("👍 Image fetched successfully.");
+    return Buffer.from(arrayBuffer).toString("base64");
 
   } catch (err) {
-    console.error("Error during the generate/refine process:", err);
+    console.error("Error during the image generation process:", err);
     throw err;
   }
 }
@@ -107,9 +80,7 @@ async function generateImageWithRetry(prompt, seed, retries = 2) {
   }
 }
 
-async function saveStoryToDB(userId, storyId, textData, imageData, genre, tone, audience) {
-  console.log(`🗂️ Saving to DB for user: ${userId}, story: ${storyId}, part: ${Object.keys(imageData)[0]}`);
-}
+// The saveStoryToDB function has been removed.
 
 hugRouter.post("/genimghug/stream", async (req, res) => {
   const payload = req.body;
@@ -143,7 +114,7 @@ hugRouter.post("/genimghug/stream", async (req, res) => {
   try {
     const coverPrompt = `masterpiece book cover, best quality, award-winning digital painting, cinematic, for a ${genre} story titled "${story.title}". Tone: ${tone}.`;
     const coverImage = await generateImageWithRetry(coverPrompt, storySeed);
-    await saveStoryToDB(userId, storyId, { title: story.title }, { cover: coverImage }, genre, tone, audience);
+    // The saveStoryToDB call has been removed.
     res.write(`event: cover\ndata: ${JSON.stringify({ title: story.title, image: coverImage })}\n\n`);
   } catch (err) {
     console.error("❌ Failed to generate cover image:", err.message);
@@ -155,7 +126,7 @@ hugRouter.post("/genimghug/stream", async (req, res) => {
     try {
       const scenePrompt = `masterpiece illustration, best quality, cinematic lighting, detailed, for a ${genre} story. Scene: ${sceneText}.`;
       const sceneImage = await generateImageWithRetry(scenePrompt, storySeed);
-      await saveStoryToDB(userId, storyId, { [sceneKey]: sceneText }, { [sceneKey]: sceneImage }, genre, tone, audience);
+      // The saveStoryToDB call has been removed.
       res.write(`event: scene\ndata: ${JSON.stringify({ key: sceneKey, text: sceneText, image: sceneImage })}\n\n`);
     } catch (err) {
       console.error(`❌ Failed to generate image for ${sceneKey}:`, err.message);
